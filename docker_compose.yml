@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  hiddyshop-bot:
+    build: .
+    container_name: hiddyshop_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - .//app/data
+      - ./logs:/app/logs
+    ports:
+      - "8080:8080"
+    networks:
+      - hiddyshop-network
+    depends_on:
+      - hiddyshop-db
+
+  hiddyshop-db:
+    image: postgres:15-alpine
+    container_name: hiddyshop_database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hiddyshop
+      POSTGRES_USER: hiddyshop_user
+      POSTGRES_PASSWORD: hiddyshop_password
+    volumes:
+      - postgres_/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - hiddyshop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hiddyshop_user -d hiddyshop"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_
+
+networks:
+  hiddyshop-network:
+    driver: bridge
