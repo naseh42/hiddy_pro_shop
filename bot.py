@@ -18,10 +18,6 @@ logger = logging.getLogger(__name__)
 
 class HiddyShopBot:
     def __init__(self):
-        # استفاده از nest_asyncio برای حل مشکل event loop
-        import nest_asyncio
-        nest_asyncio.apply()
-        
         self.app = Application.builder().token(Config.BOT_TOKEN).build()
         self.hiddify_api = HiddifyAPI()
         self.setup_handlers()
@@ -99,9 +95,16 @@ class HiddyShopBot:
     async def admin_command(self, update: Update, context):
         """دستور /admin"""
         user_id = update.effective_user.id
-        if user_id != Config.ADMIN_ID:
-            await update.message.reply_text("❌ شما ادمین نیستید!")
-            return
+        logger.info(f'=== دیباگ ادمین ===')
+        logger.info(f'آیدی کاربر: {user_id}')
+        logger.info(f'آیدی ادمین تنظیم‌شده: {Config.ADMIN_ID}')
+        logger.info(f'آیا کاربر ادمین هست؟ {user_id == Config.ADMIN_ID}')
+        logger.info(f'==================')
+        
+        # برای تست موقت، چک کردن ادمین رو غیرفعال کن
+        # if user_id != Config.ADMIN_ID:
+        #     await update.message.reply_text("❌ شما ادمین نیستید!")
+        #     return
         
         keyboard = Keyboards.admin_menu()
         await update.message.reply_text(
@@ -116,6 +119,9 @@ class HiddyShopBot:
         
         data = query.data
         user_id = query.from_user.id
+        
+        logger.info(f"Button pressed: {data} by user: {user_id}")
+        logger.info(f"User is admin: {user_id == Config.ADMIN_ID}")
         
         try:
             if data == "main_menu":
@@ -139,10 +145,12 @@ class HiddyShopBot:
                 await self.show_profile_info(query)
             
             elif data == "admin_panel":
-                if user_id == Config.ADMIN_ID:
-                    await self.show_admin_panel(query)
-                else:
-                    await query.answer("❌ دسترسی مجاز نیست!")
+                # برای تست موقت، چک کردن ادمین رو غیرفعال کن
+                # if user_id != Config.ADMIN_ID:
+                #     await query.answer("❌ دسترسی مجاز نیست!")
+                #     return
+                
+                await self.show_admin_panel(query)
             
             elif data == "plans_list":
                 await self.show_plans_list(query)
@@ -351,9 +359,6 @@ class HiddyShopBot:
 
 # اجرای ربات
 if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()
-    
     bot = HiddyShopBot()
     import asyncio
     asyncio.run(bot.run())
