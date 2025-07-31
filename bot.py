@@ -95,13 +95,6 @@ class HiddyShopBot:
     async def admin_command(self, update: Update, context):
         """دستور /admin"""
         user_id = update.effective_user.id
-        logger.info(f'=== دیباگ ادمین ===')
-        logger.info(f'آیدی کاربر: {user_id}')
-        logger.info(f'آیدی ادمین تنظیم‌شده: {Config.ADMIN_ID}')
-        logger.info(f'آیا کاربر ادمین هست؟ {user_id == Config.ADMIN_ID}')
-        logger.info(f'==================')
-        
-        # چک کردن ادمین
         if user_id != Config.ADMIN_ID:
             await update.message.reply_text("❌ شما ادمین نیستید!")
             return
@@ -120,10 +113,8 @@ class HiddyShopBot:
         data = query.data
         user_id = query.from_user.id
         
-        logger.info(f"Button pressed: {data} by user: {user_id}")
-        logger.info(f"User is admin: {user_id == Config.ADMIN_ID}")
-        
         try:
+            # منوی اصلی
             if data == "main_menu":
                 is_admin = user_id == Config.ADMIN_ID
                 keyboard = Keyboards.main_menu(is_admin=is_admin)
@@ -132,25 +123,9 @@ class HiddyShopBot:
                     reply_markup=keyboard
                 )
             
+            # فروشگاه
             elif data == "shop":
                 await self.show_shop_menu(query)
-            
-            elif data == "wallet":
-                await self.show_wallet_info(query)
-            
-            elif data == "referral":
-                await self.show_referral_info(query)
-            
-            elif data == "profile":
-                await self.show_profile_info(query)
-            
-            elif data == "admin_panel":
-                # چک کردن ادمین برای پنل ادمین
-                if user_id != Config.ADMIN_ID:
-                    await query.answer("❌ دسترسی مجاز نیست!")
-                    return
-                
-                await self.show_admin_panel(query)
             
             elif data == "plans_list":
                 await self.show_plans_list(query)
@@ -159,6 +134,56 @@ class HiddyShopBot:
                 plan_id = int(data.split("_")[1])
                 await self.show_plan_details(query, plan_id)
             
+            # کیف پول
+            elif data == "wallet":
+                await self.show_wallet_info(query)
+            
+            # رفرال
+            elif data == "referral":
+                await self.show_referral_info(query)
+            
+            # پروفایل
+            elif data == "profile":
+                await self.show_profile_info(query)
+            
+            # پنل ادمین
+            elif data == "admin_panel":
+                if user_id == Config.ADMIN_ID:
+                    await self.show_admin_panel(query)
+                else:
+                    await query.answer("❌ دسترسی مجاز نیست!")
+            
+            # بخش‌های ادمین
+            elif data == "admin_users":
+                await self.show_admin_users(query)
+            
+            elif data == "admin_plans":
+                await self.show_admin_plans(query)
+            
+            elif data == "admin_payments":
+                await self.show_admin_payments(query)
+            
+            elif data == "admin_stats":
+                await self.show_admin_stats(query)
+            
+            elif data == "admin_backup":
+                await self.show_admin_backup(query)
+            
+            elif data == "admin_discount":
+                await self.show_admin_discount(query)
+            
+            # عملیات پلن
+            elif data.startswith("buy_plan_"):
+                plan_id = int(data.split("_")[2])
+                await self.buy_plan(query, plan_id)
+            
+            # بازگشت‌ها
+            elif data == "back_to_shop":
+                await self.show_shop_menu(query)
+            
+            elif data == "back_to_admin":
+                await self.show_admin_panel(query)
+            
             else:
                 await query.answer("❌ گزینه نامعتبر!")
         
@@ -166,6 +191,7 @@ class HiddyShopBot:
             logger.error(f"Error in button_handler: {e}")
             await query.answer("❌ خطایی رخ داده است!")
     
+    # توابع منوی اصلی
     async def show_shop_menu(self, query):
         """نمایش منوی فروشگاه"""
         keyboard = Keyboards.shop_menu()
@@ -218,6 +244,30 @@ class HiddyShopBot:
         
         keyboard = Keyboards.plan_actions(plan_id)
         await query.edit_message_text(plan_info, reply_markup=keyboard)
+    
+    async def buy_plan(self, query, plan_id):
+        """خرید پلن"""
+        async for db in get_db():
+            plan_manager = PlanManager(db)
+            plan = await plan_manager.get_plan_by_id(plan_id)
+            break
+        
+        if not plan:
+            await query.answer("❌ پلن یافت نشد!")
+            return
+        
+        buy_info = f"""
+💳 خرید پلن: {plan.name}
+
+💰 قیمت: {Helpers.format_price(plan.price)}
+⏱️ مدت زمان: {Helpers.format_days(plan.days)}
+📊 ترافیک: {Helpers.format_traffic(plan.traffic_gb)}
+
+روش پرداخت خود را انتخاب کنید:
+"""
+        
+        keyboard = Keyboards.payment_methods()
+        await query.edit_message_text(buy_info, reply_markup=keyboard)
     
     async def show_wallet_info(self, query):
         """نمایش اطلاعات کیف پول"""
@@ -293,6 +343,7 @@ class HiddyShopBot:
             reply_markup=Keyboards.back_to_main()
         )
     
+    # توابع پنل ادمین
     async def show_admin_panel(self, query):
         """نمایش پنل ادمین"""
         keyboard = Keyboards.admin_menu()
@@ -300,6 +351,102 @@ class HiddyShopBot:
             "⚙️ پنل ادمین:",
             reply_markup=keyboard
         )
+    
+    async def show_admin_users(self, query):
+        """نمایش مدیریت کاربران"""
+        admin_info = """
+👥 مدیریت کاربران:
+
+در این بخش می‌توانید:
+- لیست کاربران را مشاهده کنید
+- کاربران را مسدود/رفع مسدودی کنید
+- سطح دسترسی کاربران را تغییر دهید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
+    
+    async def show_admin_plans(self, query):
+        """نمایش مدیریت پلن‌ها"""
+        admin_info = """
+📋 مدیریت پلن‌ها:
+
+در این بخش می‌توانید:
+- پلن‌های جدید ایجاد کنید
+- پلن‌های موجود را ویرایش کنید
+- پلن‌ها را فعال/غیرفعال کنید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
+    
+    async def show_admin_payments(self, query):
+        """نمایش مدیریت پرداخت‌ها"""
+        admin_info = """
+💰 مدیریت پرداخت‌ها:
+
+در این بخش می‌توانید:
+- لیست پرداخت‌ها را مشاهده کنید
+- پرداخت‌های در انتظار تایید را بررسی کنید
+- تراکنش‌ها را مدیریت کنید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
+    
+    async def show_admin_stats(self, query):
+        """نمایش آمار سیستم"""
+        admin_info = """
+📊 آمار سیستم:
+
+در این بخش می‌توانید:
+- آمار کلی سیستم را مشاهده کنید
+- گزارش‌های مالی را ببینید
+- عملکرد ربات را بررسی کنید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
+    
+    async def show_admin_backup(self, query):
+        """نمایش مدیریت بکاپ"""
+        admin_info = """
+💾 مدیریت بکاپ:
+
+در این بخش می‌توانید:
+- بکاپ از دیتابیس تهیه کنید
+- بکاپ‌های قبلی را بازیابی کنید
+- زمان‌بندی بکاپ خودکار تنظیم کنید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
+    
+    async def show_admin_discount(self, query):
+        """نمایش مدیریت کدهای تخفیف"""
+        admin_info = """
+🏷️ مدیریت کدهای تخفیف:
+
+در این بخش می‌توانید:
+- کدهای تخفیف جدید ایجاد کنید
+- کدهای موجود را مدیریت کنید
+- آمار استفاده از کدها را ببینید
+
+این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+"""
+        
+        keyboard = Keyboards.admin_back_menu()
+        await query.edit_message_text(admin_info, reply_markup=keyboard)
     
     async def handle_referral(self, user_id: int, referral_code: str):
         """مدیریت رفرال"""
