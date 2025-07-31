@@ -33,6 +33,8 @@ class Keyboards:
             [InlineKeyboardButton("📋 مدیریت پلن‌ها", callback_data="admin_plans")],
             [InlineKeyboardButton("💰 مدیریت پرداخت‌ها", callback_data="admin_payments")],
             [InlineKeyboardButton("📊 آمار سیستم", callback_data="admin_stats")],
+            [InlineKeyboardButton("💾 مدیریت بکاپ", callback_data="admin_backup")],
+            [InlineKeyboardButton("🏷️ کدهای تخفیف", callback_data="admin_discount")],
             [InlineKeyboardButton("🏠 بازگشت", callback_data="main_menu")]
         ])
     
@@ -81,6 +83,33 @@ class Keyboards:
         """بازگشت به منوی اصلی"""
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 بازگشت به منو", callback_data="main_menu")]
+        ])
+    
+    @staticmethod
+    def admin_back_menu():
+        """منوی بازگشت برای بخش‌های ادمین"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")],
+            [InlineKeyboardButton("🏠 بازگشت به منوی اصلی", callback_data="main_menu")]
+        ])
+    
+    @staticmethod
+    def user_management_menu():
+        """منوی مدیریت کاربران"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 لیست کاربران", callback_data="list_users")],
+            [InlineKeyboardButton("➕ ایجاد کاربر", callback_data="create_user")],
+            [InlineKeyboardButton("🔍 جستجو کاربر", callback_data="search_user")],
+            [InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")]
+        ])
+    
+    @staticmethod
+    def plan_management_menu():
+        """منوی مدیریت پلن‌ها"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 لیست پلن‌ها", callback_data="list_plans_admin")],
+            [InlineKeyboardButton("➕ ایجاد پلن", callback_data="create_plan")],
+            [InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")]
         ])
 
 # نمونه استفاده
