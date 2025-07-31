@@ -20,7 +20,7 @@ class HiddifyAPI:
         """ساخت URL کامل"""
         return f"{self.base_url}/{self.proxy_path}/api/v2{endpoint}"
     
-    def _make_request(self, method: str, endpoint: str,  Dict = None) -> Optional[Dict]:
+    def _make_request(self, method: str, endpoint: str, data: Dict = None) -> Optional[Dict]:
         """ارسال درخواست به API"""
         try:
             url = self._get_url(endpoint)
@@ -39,7 +39,7 @@ class HiddifyAPI:
         """دریافت همه کاربران"""
         return self._make_request("GET", "/admin/user/")
     
-    def create_user(self, user_ Dict) -> Optional[Dict]:
+    def create_user(self, user_data: Dict) -> Optional[Dict]:
         """ایجاد کاربر جدید"""
         return self._make_request("POST", "/admin/user/", user_data)
     
@@ -47,7 +47,7 @@ class HiddifyAPI:
         """دریافت اطلاعات کاربر خاص"""
         return self._make_request("GET", f"/admin/user/{uuid}/")
     
-    def update_user(self, uuid: str, user_ Dict) -> Optional[Dict]:
+    def update_user(self, uuid: str, user_data: Dict) -> Optional[Dict]:
         """ویرایش کاربر"""
         return self._make_request("PATCH", f"/admin/user/{uuid}/", user_data)
     
@@ -69,7 +69,7 @@ class HiddifyAPI:
         """دریافت همه ادمین‌ها"""
         return self._make_request("GET", "/admin/admin_user/")
     
-    def create_admin(self, admin_ Dict) -> Optional[Dict]:
+    def create_admin(self, admin_data: Dict) -> Optional[Dict]:
         """ایجاد ادمین جدید"""
         return self._make_request("POST", "/admin/admin_user/", admin_data)
     
