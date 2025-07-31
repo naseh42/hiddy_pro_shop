@@ -101,10 +101,10 @@ class HiddyShopBot:
         logger.info(f'آیا کاربر ادمین هست؟ {user_id == Config.ADMIN_ID}')
         logger.info(f'==================')
         
-        # برای تست موقت، چک کردن ادمین رو غیرفعال کن
-        # if user_id != Config.ADMIN_ID:
-        #     await update.message.reply_text("❌ شما ادمین نیستید!")
-        #     return
+        # چک کردن ادمین
+        if user_id != Config.ADMIN_ID:
+            await update.message.reply_text("❌ شما ادمین نیستید!")
+            return
         
         keyboard = Keyboards.admin_menu()
         await update.message.reply_text(
@@ -145,10 +145,10 @@ class HiddyShopBot:
                 await self.show_profile_info(query)
             
             elif data == "admin_panel":
-                # برای تست موقت، چک کردن ادمین رو غیرفعال کن
-                # if user_id != Config.ADMIN_ID:
-                #     await query.answer("❌ دسترسی مجاز نیست!")
-                #     return
+                # چک کردن ادمین برای پنل ادمین
+                if user_id != Config.ADMIN_ID:
+                    await query.answer("❌ دسترسی مجاز نیست!")
+                    return
                 
                 await self.show_admin_panel(query)
             
@@ -359,6 +359,9 @@ class HiddyShopBot:
 
 # اجرای ربات
 if __name__ == "__main__":
+    import nest_asyncio
+    nest_asyncio.apply()
+    
     bot = HiddyShopBot()
     import asyncio
     asyncio.run(bot.run())
