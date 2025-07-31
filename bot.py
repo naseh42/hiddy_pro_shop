@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 class HiddyShopBot:
     def __init__(self):
+        # استفاده از nest_asyncio برای حل مشکل event loop
+        import nest_asyncio
+        nest_asyncio.apply()
+        
         self.app = Application.builder().token(Config.BOT_TOKEN).build()
         self.hiddify_api = HiddifyAPI()
         self.setup_handlers()
@@ -347,6 +351,9 @@ class HiddyShopBot:
 
 # اجرای ربات
 if __name__ == "__main__":
+    import nest_asyncio
+    nest_asyncio.apply()
+    
     bot = HiddyShopBot()
     import asyncio
     asyncio.run(bot.run())
