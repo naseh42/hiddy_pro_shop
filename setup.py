@@ -56,15 +56,12 @@ def setup_hiddify():
         if not validate_url(hiddify_base_url):
             print(f"{Fore.RED}❌ آدرس نامعتبر است!")
     
-    hiddify_api_key = get_input("API Key پنل هیدیفای")
-    hiddify_proxy_path = get_input("مسیر پروکسی پنل", default="admin")
     hiddify_admin_uuid = get_input("UUID ادمین پنل")
     hiddify_admin_password = get_input("رمز عبور ادمین پنل")
     
     return {
         "HIDDIFY_BASE_URL": hiddify_base_url,
-        "HIDDIFY_API_KEY": hiddify_api_key,
-        "HIDDIFY_PROXY_PATH": hiddify_proxy_path,
+        "HIDDIFY_PROXY_PATH": "admin",
         "HIDDIFY_ADMIN_UUID": hiddify_admin_uuid,
         "HIDDIFY_ADMIN_PASSWORD": hiddify_admin_password
     }
@@ -103,7 +100,6 @@ def create_env_file(config_data):
             # هیدیفای
             f.write("# 🔧 تنظیمات پنل هیدیفای\n")
             f.write(f"HIDDIFY_BASE_URL={config_data['HIDDIFY_BASE_URL']}\n")
-            f.write(f"HIDDIFY_API_KEY={config_data['HIDDIFY_API_KEY']}\n")
             f.write(f"HIDDIFY_PROXY_PATH={config_data['HIDDIFY_PROXY_PATH']}\n")
             f.write(f"HIDDIFY_ADMIN_UUID={config_data['HIDDIFY_ADMIN_UUID']}\n")
             f.write(f"HIDDIFY_ADMIN_PASSWORD={config_data['HIDDIFY_ADMIN_PASSWORD']}\n\n")
