@@ -142,6 +142,37 @@ class Keyboards:
             [InlineKeyboardButton("📋 بازگشت به پلن‌ها", callback_data="admin_plans")],
             [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")]
         ])
+    
+    @staticmethod
+    def admin_users_navigation(page: int, total_pages: int):
+        """ناوبری صفحات کاربران"""
+        buttons = []
+        
+        # دکمه‌های صفحه‌بندی
+        nav_buttons = []
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("◀ قبلی", callback_data=f"admin_users_page_{page-1}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("بعدی ▶", callback_data=f"admin_users_page_{page+1}"))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        # دکمه جستجو
+        buttons.append([InlineKeyboardButton("🔍 جستجو کاربر", callback_data="search_user")])
+        
+        # دکمه بازگشت
+        buttons.append([InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")])
+        
+        return InlineKeyboardMarkup(buttons)
+    
+    @staticmethod
+    def admin_back_to_users():
+        """بازگشت به مدیریت کاربران"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 بازگشت به کاربران", callback_data="admin_users")],
+            [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")]
+        ])
 
 # نمونه استفاده
 # keyboard = Keyboards.main_menu(is_admin=True)
