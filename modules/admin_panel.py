@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User
 from models.plan import Plan
@@ -129,7 +129,9 @@ class AdminPanel:
                 )
             )
         )
-        success_count, success_amount = success_result.fetchone() or (0, 0)
+        success_data = success_result.fetchone()
+        success_count = success_data[0] if success_data else 0
+        success_amount = success_data[1] if success_data else 0.0
         
         # پرداخت‌های ناموفق
         failed_result = await self.db.execute(
@@ -141,13 +143,16 @@ class AdminPanel:
                 )
             )
         )
-        failed_count = failed_result.scalar_one()
+        failed_count = failed_result.scalar_one() or 0
+        
+        total_count = (success_count or 0) + (failed_count or 0)
+        conversion_rate = (success_count / total_count * 100) if total_count > 0 else 0
         
         return {
             "success_count": success_count or 0,
             "success_amount": success_amount or 0.0,
             "failed_count": failed_count or 0,
-            "conversion_rate": (success_count / (success_count + failed_count) * 100) if (success_count + failed_count) > 0 else 0
+            "conversion_rate": conversion_rate
         }
     
     async def get_top_referrers(self, limit: int = 10) -> list:
