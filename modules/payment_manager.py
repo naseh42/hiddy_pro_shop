@@ -1,9 +1,8 @@
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.payment import Payment
-from models.order import Order
-from datetime import datetime
-import uuid
+from models.user import User
+from datetime import datetime, timedelta
 
 class PaymentManager:
     def __init__(self, db: AsyncSession):
@@ -21,13 +20,18 @@ class PaymentManager:
             order_id=order_id,
             description=description,
             payment_gateway=payment_gateway,
-            transaction_id=str(uuid.uuid4())[:16]  # شناسه موقت
+            transaction_id=self._generate_transaction_id()
         )
         
         self.db.add(payment)
         await self.db.commit()
         await self.db.refresh(payment)
         return payment
+    
+    def _generate_transaction_id(self) -> str:
+        """تولید شناسه تراکنش منحصر به فرد"""
+        import uuid
+        return str(uuid.uuid4()).replace('-', '')[:16]
     
     async def get_payment_by_id(self, payment_id: int) -> Payment:
         """دریافت پرداخت بر اساس آیدی"""
@@ -64,17 +68,21 @@ class PaymentManager:
         """دریافت پرداخت‌های کاربر"""
         offset = (page - 1) * per_page
         result = await self.db.execute(
-            select(Payment).where(Payment.user_id == user_id)
+            select(Payment)
+            .where(Payment.user_id == user_id)
             .order_by(Payment.created_at.desc())
             .offset(offset).limit(per_page)
         )
         return result.scalars().all()
     
-    async def get_pending_payments(self) -> list:
+    async def get_pending_payments(self, page: int = 1, per_page: int = 20) -> list:
         """دریافت پرداخت‌های در انتظار تایید"""
+        offset = (page - 1) * per_page
         result = await self.db.execute(
-            select(Payment).where(Payment.status == "pending")
+            select(Payment)
+            .where(Payment.status == "pending")
             .order_by(Payment.created_at.desc())
+            .offset(offset).limit(per_page)
         )
         return result.scalars().all()
     
@@ -88,29 +96,83 @@ class PaymentManager:
     
     async def get_payment_statistics(self, days: int = 30) -> dict:
         """دریافت آمار پرداخت‌ها"""
-        from datetime import timedelta
         start_date = datetime.now() - timedelta(days=days)
         
         # پرداخت‌های موفق
         success_result = await self.db.execute(
-            select(Payment).where(
+            select(func.count(Payment.id), func.sum(Payment.amount))
+            .where(
                 and_(
                     Payment.status == "success",
                     Payment.created_at >= start_date
                 )
             )
         )
-        success_payments = success_result.scalars().all()
+        success_data = success_result.fetchone()
+        success_count = success_data[0] if success_data else 0
+        success_amount = success_data[1] if success_data else 0.0
         
-        total_amount = sum(p.amount for p in success_payments)
-        total_count = len(success_payments)
+        # پرداخت‌های ناموفق
+        failed_result = await self.db.execute(
+            select(func.count(Payment.id))
+            .where(
+                and_(
+                    Payment.status == "failed",
+                    Payment.created_at >= start_date
+                )
+            )
+        )
+        failed_count = failed_result.scalar_one() or 0
+        
+        # پرداخت‌های در انتظار
+        pending_result = await self.db.execute(
+            select(func.count(Payment.id))
+            .where(
+                and_(
+                    Payment.status == "pending",
+                    Payment.created_at >= start_date
+                )
+            )
+        )
+        pending_count = pending_result.scalar_one() or 0
+        
+        total_count = (success_count or 0) + (failed_count or 0) + (pending_count or 0)
+        conversion_rate = (success_count / total_count * 100) if total_count > 0 else 0
         
         return {
-            "total_amount": total_amount,
-            "total_count": total_count,
-            "average_amount": total_amount / total_count if total_count > 0 else 0
+            "success_count": success_count or 0,
+            "success_amount": success_amount or 0.0,
+            "failed_count": failed_count or 0,
+            "pending_count": pending_count or 0,
+            "conversion_rate": conversion_rate
         }
+    
+    async def get_payments_count(self) -> int:
+        """دریافت تعداد کل پرداخت‌ها"""
+        result = await self.db.execute(select(func.count(Payment.id)))
+        return result.scalar_one()
+    
+    async def get_success_payments_count(self) -> int:
+        """دریافت تعداد پرداخت‌های موفق"""
+        result = await self.db.execute(
+            select(func.count(Payment.id)).where(Payment.status == "success")
+        )
+        return result.scalar_one()
+    
+    async def get_failed_payments_count(self) -> int:
+        """دریافت تعداد پرداخت‌های ناموفق"""
+        result = await self.db.execute(
+            select(func.count(Payment.id)).where(Payment.status == "failed")
+        )
+        return result.scalar_one()
+    
+    async def get_pending_payments_count(self) -> int:
+        """دریافت تعداد پرداخت‌های در انتظار"""
+        result = await self.db.execute(
+            select(func.count(Payment.id)).where(Payment.status == "pending")
+        )
+        return result.scalar_one()
 
 # نمونه استفاده
 # payment_manager = PaymentManager(db_session)
-# payment = await payment_manager.create_payment(1, 50000.0, "zarinpal")
+# payment = await payment_manager.create_payment(1, 50000.0, "online")
