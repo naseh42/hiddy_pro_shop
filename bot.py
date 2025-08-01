@@ -60,20 +60,15 @@ class HiddyShopBot:
             # ارسال منوی اصلی
             is_admin = user.id == Config.ADMIN_ID
             keyboard = Keyboards.main_menu(is_admin=is_admin)
-            
             welcome_message = f"""
 سلام {user.first_name} عزیز! 👋
-
 به ربات فروشگاهی HiddyShop خوش آمدید.
-
 از منوی زیر می‌توانید اقدامات مورد نظر خود را انجام دهید:
 """
-            
             await update.message.reply_text(
                 welcome_message,
                 reply_markup=keyboard
             )
-            
         except Exception as e:
             logger.error(f"Error in start_command: {e}")
             await update.message.reply_text("❌ خطایی رخ داده است!")
@@ -82,12 +77,10 @@ class HiddyShopBot:
         """دستور /help"""
         help_text = """
 راهنمای استفاده از ربات:
-
 🛍️ فروشگاه: مشاهده پلن‌های موجود و خرید
 💳 کیف پول: مشاهده موجودی و افزایش اعتبار
 👥 رفرال: دعوت دوستان و دریافت کمیسیون
 📊 پروفایل: مشاهده اطلاعات کاربری
-
 برای کمک بیشتر با پشتیبانی تماس بگیرید.
 """
         await update.message.reply_text(help_text)
@@ -109,7 +102,6 @@ class HiddyShopBot:
         """مدیریت کلیک دکمه‌ها"""
         query = update.callback_query
         await query.answer()
-        
         data = query.data
         user_id = query.from_user.id
         
@@ -126,10 +118,8 @@ class HiddyShopBot:
             # فروشگاه
             elif data == "shop":
                 await self.show_shop_menu(query)
-            
             elif data == "plans_list":
                 await self.show_plans_list(query)
-            
             elif data.startswith("plan_"):
                 plan_id = int(data.split("_")[1])
                 await self.show_plan_details(query, plan_id)
@@ -156,19 +146,14 @@ class HiddyShopBot:
             # بخش‌های ادمین
             elif data == "admin_users":
                 await self.show_admin_users(query)
-            
             elif data == "admin_plans":
                 await self.show_admin_plans(query)
-            
             elif data == "admin_payments":
                 await self.show_admin_payments(query)
-            
             elif data == "admin_stats":
                 await self.show_admin_stats(query)
-            
             elif data == "admin_backup":
                 await self.show_admin_backup(query)
-            
             elif data == "admin_discount":
                 await self.show_admin_discount(query)
             
@@ -180,13 +165,11 @@ class HiddyShopBot:
             # بازگشت‌ها
             elif data == "back_to_shop":
                 await self.show_shop_menu(query)
-            
             elif data == "back_to_admin":
                 await self.show_admin_panel(query)
-            
             else:
                 await query.answer("❌ گزینه نامعتبر!")
-        
+                
         except Exception as e:
             logger.error(f"Error in button_handler: {e}")
             await query.answer("❌ خطایی رخ داده است!")
@@ -233,15 +216,12 @@ class HiddyShopBot:
         
         plan_info = f"""
 📋 جزئیات پلن:
-
 📝 نام: {plan.name}
 ⏱️ مدت زمان: {Helpers.format_days(plan.days)}
 📊 ترافیک: {Helpers.format_traffic(plan.traffic_gb)}
 💰 قیمت: {Helpers.format_price(plan.price)}
-
 {plan.description or ''}
 """
-        
         keyboard = Keyboards.plan_actions(plan_id)
         await query.edit_message_text(plan_info, reply_markup=keyboard)
     
@@ -258,14 +238,11 @@ class HiddyShopBot:
         
         buy_info = f"""
 💳 خرید پلن: {plan.name}
-
 💰 قیمت: {Helpers.format_price(plan.price)}
 ⏱️ مدت زمان: {Helpers.format_days(plan.days)}
 📊 ترافیک: {Helpers.format_traffic(plan.traffic_gb)}
-
 روش پرداخت خود را انتخاب کنید:
 """
-        
         keyboard = Keyboards.payment_methods()
         await query.edit_message_text(buy_info, reply_markup=keyboard)
     
@@ -280,12 +257,9 @@ class HiddyShopBot:
         
         wallet_info = f"""
 💳 کیف پول شما:
-
 💰 موجودی فعلی: {Helpers.format_price(balance)}
-
 برای افزایش موجودی از طریق پنل ادمین اقدام کنید.
 """
-        
         await query.edit_message_text(
             wallet_info,
             reply_markup=Keyboards.back_to_main()
@@ -294,12 +268,10 @@ class HiddyShopBot:
     async def show_referral_info(self, query):
         """نمایش اطلاعات رفرال - نسخه واقعی"""
         user_id = query.from_user.id
-        
         try:
             async for db in get_db():
                 from modules.user_manager import UserManager
                 from modules.referral import ReferralManager
-                
                 user_manager = UserManager(db)
                 referral_manager = ReferralManager(db)
                 
@@ -314,7 +286,6 @@ class HiddyShopBot:
                 
                 # دریافت کاربران معرفی‌شده (آخرین 5 نفر)
                 referred_users = await referral_manager.get_user_referrals(user.id, page=1, per_page=5)
-                
                 break
             
             # ساخت لیست کاربران معرفی‌شده
@@ -331,29 +302,22 @@ class HiddyShopBot:
             
             referral_info = f"""
 👥 برنامه رفرال:
-
 🔗 کد رفرال شما: `{user.referral_code}`
-
 📊 آمار:
 ├─ کاربران معرفی‌شده: {stats['referred_count']} نفر
 ├─ کمیسیون دریافت‌شده: {Helpers.format_price(stats['total_commission'])}
 └─ کمیسیون در انتظار: {Helpers.format_price(stats['pending_commission'])}
-
 💡 روش دعوت:
 لینک دعوت شما:
 `t.me/{(await self.app.bot.get_me()).username}?start={user.referral_code}`
-
 {referred_list}
-
 برای دعوت دوستان، لینک بالا را با آن‌ها به اشتراک بگذارید.
 """
-            
             await query.edit_message_text(
                 referral_info,
                 reply_markup=Keyboards.back_to_main(),
                 parse_mode="Markdown"
             )
-            
         except Exception as e:
             logger.error(f"Error in show_referral_info: {e}")
             await query.answer("❌ خطایی رخ داده است!")
@@ -365,14 +329,11 @@ class HiddyShopBot:
         
         profile_info = f"""
 📊 پروفایل کاربری:
-
 👤 نام: {user.first_name} {user.last_name or ''}
 🆔 آیدی تلگرام: {user.id}
 📝 نام کاربری: @{user.username or 'ندارد'}
-
 برای تغییر اطلاعات، از طریق تلگرام اقدام کنید.
 """
-        
         await query.edit_message_text(
             profile_info,
             reply_markup=Keyboards.back_to_main()
@@ -398,23 +359,18 @@ class HiddyShopBot:
             
             users_info = f"""
 👥 مدیریت کاربران:
-
 📊 آمار کلی:
 ├─ تعداد کل کاربران: {total_users}
 ├─ کاربران فعال: {len([u for u in users if u.is_active])}
 └─ کاربران ادمین: {len([u for u in users if u.is_admin])}
-
 عملیات موجود:
 • مشاهده لیست کاربران
 • مسدود/رفع مسدودی کاربران
 • تغییر سطح دسترسی
-
 این بخش در حال توسعه است.
 """
-            
             keyboard = Keyboards.admin_back_menu()
             await query.edit_message_text(users_info, reply_markup=keyboard)
-            
         except Exception as e:
             logger.error(f"Error in show_admin_users: {e}")
             await query.answer("❌ خطایی رخ داده است!")
@@ -430,30 +386,26 @@ class HiddyShopBot:
             if not plans:
                 plans_text = "❌ هیچ پلنی تعریف نشده است."
             else:
-                plans_text = "📋 لیست پلن‌های تعریف‌شده:\n\n"
+                plans_text = "📋 لیست پلن‌های تعریف‌شده:\n"
                 for i, plan in enumerate(plans, 1):
                     status = "فعال" if plan.is_active else "غیرفعال"
                     plans_text += f"{i}. {plan.name}\n"
                     plans_text += f"   ⏱️ {Helpers.format_days(plan.days)}\n"
                     plans_text += f"   📊 {Helpers.format_traffic(plan.traffic_gb)}\n"
                     plans_text += f"   💰 {Helpers.format_price(plan.price)}\n"
-                    plans_text += f"   📊 وضعیت: {status}\n\n"
+                    plans_text += f"   📊 وضعیت: {status}\n"
             
             plans_info = f"""
 📋 مدیریت پلن‌ها:
-
 {plans_text}
-
 عملیات موجود:
 • ایجاد پلن جدید
 • ویرایش پلن‌های موجود
 • فعال/غیرفعال کردن پلن‌ها
 • حذف پلن‌ها
 """
-            
             keyboard = Keyboards.admin_back_menu()
             await query.edit_message_text(plans_info, reply_markup=keyboard)
-            
         except Exception as e:
             logger.error(f"Error in show_admin_plans: {e}")
             await query.answer("❌ خطایی رخ داده است!")
@@ -462,15 +414,12 @@ class HiddyShopBot:
         """نمایش مدیریت پرداخت‌ها"""
         admin_info = """
 💰 مدیریت پرداخت‌ها:
-
 در این بخش می‌توانید:
 - لیست پرداخت‌ها را مشاهده کنید
 - پرداخت‌های در انتظار تایید را بررسی کنید
 - تراکنش‌ها را مدیریت کنید
-
 این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
 """
-        
         keyboard = Keyboards.admin_back_menu()
         await query.edit_message_text(admin_info, reply_markup=keyboard)
     
@@ -478,15 +427,12 @@ class HiddyShopBot:
         """نمایش آمار سیستم"""
         admin_info = """
 📊 آمار سیستم:
-
 در این بخش می‌توانید:
 - آمار کلی سیستم را مشاهده کنید
 - گزارش‌های مالی را ببینید
 - عملکرد ربات را بررسی کنید
-
 این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
 """
-        
         keyboard = Keyboards.admin_back_menu()
         await query.edit_message_text(admin_info, reply_markup=keyboard)
     
@@ -494,15 +440,12 @@ class HiddyShopBot:
         """نمایش مدیریت بکاپ"""
         admin_info = """
 💾 مدیریت بکاپ:
-
 در این بخش می‌توانید:
 - بکاپ از دیتابیس تهیه کنید
 - بکاپ‌های قبلی را بازیابی کنید
 - زمان‌بندی بکاپ خودکار تنظیم کنید
-
 این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
 """
-        
         keyboard = Keyboards.admin_back_menu()
         await query.edit_message_text(admin_info, reply_markup=keyboard)
     
@@ -510,15 +453,12 @@ class HiddyShopBot:
         """نمایش مدیریت کدهای تخفیف"""
         admin_info = """
 🏷️ مدیریت کدهای تخفیف:
-
 در این بخش می‌توانید:
 - کدهای تخفیف جدید ایجاد کنید
 - کدهای موجود را مدیریت کنید
 - آمار استفاده از کدها را ببینید
-
 این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
 """
-        
         keyboard = Keyboards.admin_back_menu()
         await query.edit_message_text(admin_info, reply_markup=keyboard)
     
@@ -528,7 +468,6 @@ class HiddyShopBot:
             async for db in get_db():
                 from modules.user_manager import UserManager
                 from modules.referral import ReferralManager
-                
                 user_manager = UserManager(db)
                 referral_manager = ReferralManager(db)
                 
@@ -558,7 +497,6 @@ class HiddyShopBot:
                     )
                 except:
                     pass  # اگر نتوانست پیام بفرستد، مهم نیست
-                
                 break
         except Exception as e:
             logger.error(f"Error in handle_referral: {e}")
@@ -582,7 +520,6 @@ class HiddyShopBot:
 if __name__ == "__main__":
     import nest_asyncio
     nest_asyncio.apply()
-    
     bot = HiddyShopBot()
     import asyncio
     asyncio.run(bot.run())
