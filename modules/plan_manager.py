@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.plan import Plan
 from datetime import datetime
@@ -9,15 +9,24 @@ class PlanManager:
     
     async def create_plan(self, name: str, days: int, traffic_gb: float, 
                          price: float, description: str = None, 
-                         hiddify_mode: str = "no_reset") -> Plan:
+                         hiddify_mode: str = "no_reset", product_name: str = None,
+                         max_ips: int = 1, monthly_package: bool = False) -> Plan:
         """ایجاد پلن جدید"""
+        # محاسبه sort_order برای آخرین موقعیت
+        result = await self.db.execute(select(func.max(Plan.sort_order)))
+        max_order = result.scalar_one() or 0
+        
         plan = Plan(
             name=name,
             days=days,
             traffic_gb=traffic_gb,
             price=price,
             description=description,
-            hiddify_mode=hiddify_mode
+            hiddify_mode=hiddify_mode,
+            product_name=product_name,
+            max_ips=max_ips,
+            monthly_package=monthly_package,
+            sort_order=max_order + 1
         )
         
         self.db.add(plan)
@@ -43,7 +52,7 @@ class PlanManager:
         """دریافت همه پلن‌ها با صفحه‌بندی"""
         offset = (page - 1) * per_page
         result = await self.db.execute(
-            select(Plan).offset(offset).limit(per_page)
+            select(Plan).order_by(Plan.sort_order).offset(offset).limit(per_page)
         )
         return result.scalars().all()
     
@@ -87,6 +96,22 @@ class PlanManager:
             ).order_by(Plan.sort_order)
         )
         return result.scalars().all()
+    
+    async def reorder_plans(self, plan_ids: list) -> bool:
+        """تغییر ترتیب پلن‌ها"""
+        try:
+            for index, plan_id in enumerate(plan_ids):
+                await self.update_plan(plan_id, sort_order=index + 1)
+            await self.db.commit()
+            return True
+        except Exception as e:
+            await self.db.rollback()
+            return False
+    
+    async def get_plans_count(self) -> int:
+        """دریافت تعداد کل پلن‌ها"""
+        result = await self.db.execute(select(func.count(Plan.id)))
+        return result.scalar_one()
 
 # نمونه استفاده
 # plan_manager = PlanManager(db_session)
