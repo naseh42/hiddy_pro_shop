@@ -111,6 +111,37 @@ class Keyboards:
             [InlineKeyboardButton("➕ ایجاد پلن", callback_data="create_plan")],
             [InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")]
         ])
+    
+    @staticmethod
+    def admin_plans_navigation(page: int, total_pages: int):
+        """ناوبری صفحات پلن‌ها"""
+        buttons = []
+        
+        # دکمه‌های صفحه‌بندی
+        nav_buttons = []
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("◀ قبلی", callback_data=f"admin_plans_page_{page-1}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("بعدی ▶", callback_data=f"admin_plans_page_{page+1}"))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        # دکمه ایجاد پلن جدید
+        buttons.append([InlineKeyboardButton("➕ ایجاد پلن جدید", callback_data="create_plan")])
+        
+        # دکمه بازگشت
+        buttons.append([InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")])
+        
+        return InlineKeyboardMarkup(buttons)
+    
+    @staticmethod
+    def admin_back_to_plans():
+        """بازگشت به مدیریت پلن‌ها"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 بازگشت به پلن‌ها", callback_data="admin_plans")],
+            [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")]
+        ])
 
 # نمونه استفاده
 # keyboard = Keyboards.main_menu(is_admin=True)
