@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, ForeignKey
 from sqlalchemy.sql import func
 from database import Base
 from datetime import datetime
@@ -16,6 +16,7 @@ class User(Base):
     # سطح دسترسی
     is_admin = Column(Boolean, default=False)
     is_agent = Column(Boolean, default=False)
+    is_blocked = Column(Boolean, default=False)  # کاربر مسدود شده
     
     # کیف پول
     wallet_balance = Column(Float, default=0.0)
