@@ -124,11 +124,7 @@ class HiddifyAPI:
 # نمونه استفاده و تست
 if __name__ == "__main__":
     # تست اتصال
-    api = HiddifyAPI(
-        base_url="https://subgerman.kudanshop.ir",
-        api_key="ULTfkcPpjxdDA3SnJ",
-        proxy_path="ULTfkcPpjxdDA3SnJ"
-    )
+    api = HiddifyAPI()
     
     # تست دریافت اطلاعات پنل
     print("Testing panel connection...")
