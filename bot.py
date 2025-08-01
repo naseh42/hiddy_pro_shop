@@ -21,6 +21,7 @@ class HiddyShopBot:
         self.app = Application.builder().token(Config.BOT_TOKEN).build()
         self.hiddify_api = HiddifyAPI()
         self.setup_handlers()
+        self.user_states = {}  # برای مدیریت وضعیت کاربران
     
     def setup_handlers(self):
         """تنظیم هندلرهای ربات"""
@@ -81,6 +82,7 @@ class HiddyShopBot:
 💳 کیف پول: مشاهده موجودی و افزایش اعتبار
 👥 رفرال: دعوت دوستان و دریافت کمیسیون
 📊 پروفایل: مشاهده اطلاعات کاربری
+🏢 درخواست نمایندگی: ارسال درخواست برای تبدیل شدن به نماینده
 برای کمک بیشتر با پشتیبانی تماس بگیرید.
 """
         await update.message.reply_text(help_text)
@@ -136,6 +138,10 @@ class HiddyShopBot:
             elif data == "profile":
                 await self.show_profile_info(query)
             
+            # درخواست نمایندگی
+            elif data == "agent_request":
+                await self.show_agent_request_form(query)
+            
             # پنل ادمین
             elif data == "admin_panel":
                 if user_id == Config.ADMIN_ID:
@@ -156,11 +162,17 @@ class HiddyShopBot:
                 await self.show_admin_backup(query)
             elif data == "admin_discount":
                 await self.show_admin_discount(query)
+            elif data == "admin_agent_requests":
+                await self.show_admin_agent_requests(query)
             
             # عملیات پلن
             elif data.startswith("buy_plan_"):
                 plan_id = int(data.split("_")[2])
                 await self.buy_plan(query, plan_id)
+            
+            # عملیات درخواست نمایندگی
+            elif data == "submit_agent_request":
+                await self.start_agent_request_process(query)
             
             # بازگشت‌ها
             elif data == "back_to_shop":
@@ -339,6 +351,177 @@ class HiddyShopBot:
             reply_markup=Keyboards.back_to_main()
         )
     
+    # بخش درخواست نمایندگی
+    async def show_agent_request_form(self, query):
+        """نمایش فرم درخواست نمایندگی"""
+        user_id = query.from_user.id
+        
+        # بررسی اینکه آیا کاربر قبلاً نماینده است یا نه
+        async for db in get_db():
+            user_manager = UserManager(db)
+            user = await user_manager.get_user_by_telegram_id(user_id)
+            break
+        
+        if user and user.is_agent:
+            await query.edit_message_text(
+                "✅ شما قبلاً نماینده تایید شده هستید!",
+                reply_markup=Keyboards.back_to_main()
+            )
+            return
+        
+        # بررسی اینکه آیا قبلاً درخواست داده یا نه
+        async for db in get_db():
+            from modules.agent_manager import AgentManager
+            agent_manager = AgentManager(db)
+            existing_request = await agent_manager.get_user_agent_request(user_id)
+            break
+        
+        if existing_request:
+            if existing_request.status == "pending":
+                await query.edit_message_text(
+                    "⏳ درخواست شما در حال بررسی است. لطفاً منتظر بمانید.",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                return
+            elif existing_request.status == "approved":
+                await query.edit_message_text(
+                    "✅ درخواست شما قبلاً تایید شده است!",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                return
+            elif existing_request.status == "rejected":
+                agent_request_info = f"""
+❌ درخواست قبلی شما رد شده است.
+دلیل رد: {existing_request.rejection_reason or 'ندارد'}
+
+آیا می‌خواهید درخواست جدیدی ارسال کنید؟
+"""
+                keyboard = Keyboards.confirm_agent_request()
+                await query.edit_message_text(
+                    agent_request_info,
+                    reply_markup=keyboard
+                )
+                return
+        
+        agent_request_info = """
+🏢 درخواست نمایندگی:
+برای تبدیل شدن به نماینده، اطلاعات خود را وارد کنید:
+
+نام و نام خانوادگی:
+شماره تماس:
+ایمیل (اختیاری):
+آدرس (اختیاری):
+تجربه و مهارت‌های مرتبط (اختیاری):
+
+پس از ارسال درخواست، توسط ادمین بررسی خواهد شد.
+"""
+        
+        await query.edit_message_text(
+            agent_request_info,
+            reply_markup=Keyboards.back_to_main()
+        )
+        self.user_states[user_id] = "awaiting_agent_request_data"
+    
+    async def start_agent_request_process(self, query):
+        """شروع فرآیند درخواست نمایندگی"""
+        await query.edit_message_text(
+            "لطفاً اطلاعات خود را به ترتیب وارد کنید:\n\n"
+            "نام و نام خانوادگی:\n"
+            "شماره تماس:\n"
+            "ایمیل (اختیاری):\n"
+            "آدرس (اختیاری):\n"
+            "تجربه و مهارت‌های مرتبط (اختیاری):",
+            reply_markup=Keyboards.back_to_main()
+        )
+        self.user_states[query.from_user.id] = "awaiting_agent_request_data"
+    
+    async def process_agent_request_data(self, update: Update):
+        """پردازش داده‌های درخواست نمایندگی"""
+        user_id = update.effective_user.id
+        text = update.message.text
+        
+        try:
+            lines = text.strip().split('\n')
+            if len(lines) < 2:
+                await update.message.reply_text(
+                    "❌ اطلاعات ناقص است. لطفاً حداقل نام و شماره تماس را وارد کنید.",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                return
+            
+            full_name = lines[0].strip()
+            phone = lines[1].strip()
+            email = lines[2].strip() if len(lines) > 2 and lines[2].strip() else None
+            address = lines[3].strip() if len(lines) > 3 and lines[3].strip() else None
+            experience = lines[4].strip() if len(lines) > 4 and lines[4].strip() else None
+            
+            # اعتبارسنجی داده‌ها
+            from utils.validators import Validators
+            if not Validators.validate_phone(phone):
+                await update.message.reply_text(
+                    "❌ شماره تماس نامعتبر است!",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                return
+            
+            if email and not Validators.validate_email(email):
+                await update.message.reply_text(
+                    "❌ ایمیل نامعتبر است!",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                return
+            
+            # ذخیره درخواست
+            async for db in get_db():
+                from modules.agent_manager import AgentManager
+                agent_manager = AgentManager(db)
+                agent_request = await agent_manager.create_agent_request(
+                    user_id=user_id,
+                    full_name=full_name,
+                    phone=phone,
+                    email=email,
+                    address=address,
+                    experience=experience
+                )
+                break
+            
+            if agent_request:
+                await update.message.reply_text(
+                    "✅ درخواست نمایندگی شما با موفقیت ارسال شد!\n"
+                    "درخواست شما در حال بررسی است و نتیجه به زودی به شما اطلاع داده خواهد شد.",
+                    reply_markup=Keyboards.back_to_main()
+                )
+                
+                # اطلاع‌رسانی به ادمین
+                try:
+                    await self.app.bot.send_message(
+                        chat_id=Config.ADMIN_ID,
+                        text=f"📥 درخواست نمایندگی جدید:\n\n"
+                             f"👤 کاربر: {full_name}\n"
+                             f"📱 تلفن: {phone}\n"
+                             f"📧 ایمیل: {email or 'ندارد'}\n"
+                             f"📍 آدرس: {address or 'ندارد'}\n"
+                             f"💼 تجربه: {experience or 'ندارد'}\n\n"
+                             f"برای بررسی و تایید/رد درخواست از پنل ادمین استفاده کنید."
+                    )
+                except:
+                    pass
+                
+                # حذف وضعیت کاربر
+                if user_id in self.user_states:
+                    del self.user_states[user_id]
+            else:
+                await update.message.reply_text(
+                    "❌ خطا در ارسال درخواست نمایندگی!",
+                    reply_markup=Keyboards.back_to_main()
+                )
+        except Exception as e:
+            logger.error(f"Error in process_agent_request_data: {e}")
+            await update.message.reply_text(
+                "❌ خطا در پردازش اطلاعات!",
+                reply_markup=Keyboards.back_to_main()
+            )
+    
     # توابع پنل ادمین
     async def show_admin_panel(self, query):
         """نمایش پنل ادمین"""
@@ -462,6 +645,49 @@ class HiddyShopBot:
         keyboard = Keyboards.admin_back_menu()
         await query.edit_message_text(admin_info, reply_markup=keyboard)
     
+    async def show_admin_agent_requests(self, query):
+        """نمایش درخواست‌های نمایندگی"""
+        try:
+            async for db in get_db():
+                from modules.agent_manager import AgentManager
+                agent_manager = AgentManager(db)
+                pending_requests = await agent_manager.get_pending_requests(page=1, per_page=10)
+                total_pending = await agent_manager.get_requests_count("pending")
+                break
+            
+            requests_info = f"""
+🏢 مدیریت درخواست‌های نمایندگی:
+📊 آمار:
+├─ درخواست‌های در انتظار: {total_pending}
+└─ درخواست‌های تایید شده: {await agent_manager.get_requests_count("approved")}
+            
+📋 درخواست‌های در انتظار تایید:
+"""
+            
+            if pending_requests:
+                for i, request in enumerate(pending_requests, 1):
+                    requests_info += f"{i}. {request.full_name}\n"
+                    requests_info += f"   📱 {request.phone}\n"
+                    requests_info += f"   📧 {request.email or 'ندارد'}\n"
+                    requests_info += f"   📅 {request.created_at.strftime('%Y/%m/%d %H:%M')}\n"
+                    requests_info += f"   🆔 /review_agent_{request.id}\n\n"
+            else:
+                requests_info += "❌ هیچ درخواستی در انتظار تایید نیست."
+            
+            requests_info += """
+عملیات موجود:
+• بررسی و تایید/رد درخواست‌ها
+• مشاهده آمار درخواست‌ها
+"""
+            
+            await query.edit_message_text(
+                requests_info,
+                reply_markup=Keyboards.admin_back_menu()
+            )
+        except Exception as e:
+            logger.error(f"Error in show_admin_agent_requests: {e}")
+            await query.answer("❌ خطایی رخ داده است!")
+    
     async def handle_referral(self, user_id: int, referral_code: str):
         """مدیریت رفرال"""
         try:
@@ -503,6 +729,16 @@ class HiddyShopBot:
     
     async def message_handler(self, update: Update, context):
         """مدیریت پیام‌های متنی"""
+        user_id = update.effective_user.id
+        
+        # بررسی اینکه آیا کاربر در حالت خاصی است یا نه
+        if user_id in self.user_states:
+            state = self.user_states[user_id]
+            
+            if state == "awaiting_agent_request_data":
+                await self.process_agent_request_data(update)
+                return
+        
         await update.message.reply_text(
             "لطفاً از منوی اصلی استفاده کنید:",
             reply_markup=Keyboards.main_menu(
