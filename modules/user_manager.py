@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, UserHiddify
 from utils.helpers import Helpers
@@ -58,6 +58,7 @@ class UserManager:
         user = await self.get_user_by_id(user_id)
         if user:
             user.wallet_balance += amount
+            user.updated_at = datetime.now()
             await self.db.commit()
             return True
         return False
@@ -84,7 +85,23 @@ class UserManager:
         """دریافت همه کاربران با صفحه‌بندی"""
         offset = (page - 1) * per_page
         result = await self.db.execute(
-            select(User).offset(offset).limit(per_page)
+            select(User).order_by(User.created_at.desc()).offset(offset).limit(per_page)
+        )
+        return result.scalars().all()
+    
+    async def search_users(self, query: str, page: int = 1, per_page: int = 50) -> list:
+        """جستجو در کاربران"""
+        offset = (page - 1) * per_page
+        result = await self.db.execute(
+            select(User)
+            .where(
+                User.first_name.contains(query) | 
+                User.last_name.contains(query) | 
+                User.username.contains(query) |
+                User.telegram_id.cast(str).contains(query)
+            )
+            .order_by(User.created_at.desc())
+            .offset(offset).limit(per_page)
         )
         return result.scalars().all()
     
@@ -107,6 +124,40 @@ class UserManager:
     async def set_user_agent(self, user_id: int, is_agent: bool = True) -> bool:
         """تعیین کاربر به عنوان نماینده"""
         return await self.update_user_info(user_id, is_agent=is_agent)
+    
+    async def block_user(self, user_id: int) -> bool:
+        """مسدود کردن کاربر"""
+        return await self.update_user_info(user_id, is_blocked=True, is_active=False)
+    
+    async def unblock_user(self, user_id: int) -> bool:
+        """رفع مسدودی کاربر"""
+        return await self.update_user_info(user_id, is_blocked=False, is_active=True)
+    
+    async def get_users_count(self) -> int:
+        """دریافت تعداد کل کاربران"""
+        result = await self.db.execute(select(func.count(User.id)))
+        return result.scalar_one()
+    
+    async def get_active_users_count(self) -> int:
+        """دریافت تعداد کاربران فعال"""
+        result = await self.db.execute(
+            select(func.count(User.id)).where(User.is_active == True)
+        )
+        return result.scalar_one()
+    
+    async def get_admin_users_count(self) -> int:
+        """دریافت تعداد کاربران ادمین"""
+        result = await self.db.execute(
+            select(func.count(User.id)).where(User.is_admin == True)
+        )
+        return result.scalar_one()
+    
+    async def get_blocked_users_count(self) -> int:
+        """دریافت تعداد کاربران مسدود شده"""
+        result = await self.db.execute(
+            select(func.count(User.id)).where(User.is_blocked == True)
+        )
+        return result.scalar_one()
 
 # نمونه استفاده
 # user_manager = UserManager(db_session)
