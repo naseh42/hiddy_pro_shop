@@ -173,6 +173,41 @@ class Keyboards:
             [InlineKeyboardButton("📋 بازگشت به کاربران", callback_data="admin_users")],
             [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")]
         ])
+    
+    @staticmethod
+    def admin_payments_navigation(page: int, total_pages: int, status: str = "all"):
+        """ناوبری صفحات پرداخت‌ها"""
+        buttons = []
+        
+        # دکمه‌های فیلتر
+        filter_buttons = [
+            InlineKeyboardButton("همه", callback_data="admin_payments_all"),
+            InlineKeyboardButton("در انتظار", callback_data="admin_payments_pending")
+        ]
+        buttons.append(filter_buttons)
+        
+        # دکمه‌های صفحه‌بندی
+        nav_buttons = []
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("◀ قبلی", callback_data=f"admin_payments_page_{page-1}_{status}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("بعدی ▶", callback_data=f"admin_payments_page_{page+1}_{status}"))
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        # دکمه بازگشت
+        buttons.append([InlineKeyboardButton("🏠 بازگشت", callback_data="admin_panel")])
+        
+        return InlineKeyboardMarkup(buttons)
+    
+    @staticmethod
+    def admin_back_to_payments():
+        """بازگشت به مدیریت پرداخت‌ها"""
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("💰 بازگشت به پرداخت‌ها", callback_data="admin_payments")],
+            [InlineKeyboardButton("🏠 بازگشت به پنل ادمین", callback_data="admin_panel")]
+        ])
 
 # نمونه استفاده
 # keyboard = Keyboards.main_menu(is_admin=True)
