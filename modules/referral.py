@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User
 from models.referral import Referral
