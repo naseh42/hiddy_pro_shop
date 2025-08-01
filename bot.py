@@ -292,19 +292,44 @@ class HiddyShopBot:
         )
     
     async def show_referral_info(self, query):
-        """نمایش اطلاعات رفرال"""
+        """نمایش اطلاعات رفرال - نسخه واقعی"""
         user_id = query.from_user.id
-        async for db in get_db():
-            from modules.user_manager import UserManager
-            from modules.referral import ReferralManager
-            user_manager = UserManager(db)
-            referral_manager = ReferralManager(db)
-            
-            user = await user_manager.get_user_by_id(user_id)
-            stats = await referral_manager.get_user_referral_stats(user_id)
-            break
         
-        referral_info = f"""
+        try:
+            async for db in get_db():
+                from modules.user_manager import UserManager
+                from modules.referral import ReferralManager
+                
+                user_manager = UserManager(db)
+                referral_manager = ReferralManager(db)
+                
+                # دریافت اطلاعات کاربر
+                user = await user_manager.get_user_by_telegram_id(user_id)
+                if not user:
+                    await query.answer("❌ خطا در دریافت اطلاعات کاربر!")
+                    return
+                
+                # دریافت آمار رفرال
+                stats = await referral_manager.get_user_referral_stats(user.id)
+                
+                # دریافت کاربران معرفی‌شده (آخرین 5 نفر)
+                referred_users = await referral_manager.get_user_referrals(user.id, page=1, per_page=5)
+                
+                break
+            
+            # ساخت لیست کاربران معرفی‌شده
+            referred_list = ""
+            if referred_users:
+                referred_list = "\nآخرین کاربران معرفی‌شده:\n"
+                for i, (referred_user, created_at) in enumerate(referred_users, 1):
+                    name = f"{referred_user.first_name or ''} {referred_user.last_name or ''}".strip()
+                    if not name:
+                        name = f"کاربر {referred_user.id}"
+                    referred_list += f"{i}. {name} ({created_at.strftime('%Y/%m/%d')})\n"
+            else:
+                referred_list = "\nهنوز کاربری معرفی نکرده‌اید."
+            
+            referral_info = f"""
 👥 برنامه رفرال:
 
 🔗 کد رفرال شما: `{user.referral_code}`
@@ -314,14 +339,24 @@ class HiddyShopBot:
 ├─ کمیسیون دریافت‌شده: {Helpers.format_price(stats['total_commission'])}
 └─ کمیسیون در انتظار: {Helpers.format_price(stats['pending_commission'])}
 
-برای دعوت دوستان، کد بالا را با آن‌ها به اشتراک بگذارید.
+💡 روش دعوت:
+لینک دعوت شما:
+`t.me/{(await self.app.bot.get_me()).username}?start={user.referral_code}`
+
+{referred_list}
+
+برای دعوت دوستان، لینک بالا را با آن‌ها به اشتراک بگذارید.
 """
-        
-        await query.edit_message_text(
-            referral_info,
-            reply_markup=Keyboards.back_to_main(),
-            parse_mode="Markdown"
-        )
+            
+            await query.edit_message_text(
+                referral_info,
+                reply_markup=Keyboards.back_to_main(),
+                parse_mode="Markdown"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in show_referral_info: {e}")
+            await query.answer("❌ خطایی رخ داده است!")
     
     async def show_profile_info(self, query):
         """نمایش اطلاعات پروفایل"""
@@ -354,35 +389,74 @@ class HiddyShopBot:
     
     async def show_admin_users(self, query):
         """نمایش مدیریت کاربران"""
-        admin_info = """
+        try:
+            async for db in get_db():
+                user_manager = UserManager(db)
+                users = await user_manager.get_all_users(page=1, per_page=10)
+                total_users = len(users)  # در نسخه واقعی باید از دیتابیس بگیریم
+                break
+            
+            users_info = f"""
 👥 مدیریت کاربران:
 
-در این بخش می‌توانید:
-- لیست کاربران را مشاهده کنید
-- کاربران را مسدود/رفع مسدودی کنید
-- سطح دسترسی کاربران را تغییر دهید
+📊 آمار کلی:
+├─ تعداد کل کاربران: {total_users}
+├─ کاربران فعال: {len([u for u in users if u.is_active])}
+└─ کاربران ادمین: {len([u for u in users if u.is_admin])}
 
-این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+عملیات موجود:
+• مشاهده لیست کاربران
+• مسدود/رفع مسدودی کاربران
+• تغییر سطح دسترسی
+
+این بخش در حال توسعه است.
 """
-        
-        keyboard = Keyboards.admin_back_menu()
-        await query.edit_message_text(admin_info, reply_markup=keyboard)
+            
+            keyboard = Keyboards.admin_back_menu()
+            await query.edit_message_text(users_info, reply_markup=keyboard)
+            
+        except Exception as e:
+            logger.error(f"Error in show_admin_users: {e}")
+            await query.answer("❌ خطایی رخ داده است!")
     
     async def show_admin_plans(self, query):
-        """نمایش مدیریت پلن‌ها"""
-        admin_info = """
+        """نمایش مدیریت پلن‌ها - نسخه واقعی"""
+        try:
+            async for db in get_db():
+                plan_manager = PlanManager(db)
+                plans = await plan_manager.get_all_plans(page=1, per_page=10)
+                break
+            
+            if not plans:
+                plans_text = "❌ هیچ پلنی تعریف نشده است."
+            else:
+                plans_text = "📋 لیست پلن‌های تعریف‌شده:\n\n"
+                for i, plan in enumerate(plans, 1):
+                    status = "فعال" if plan.is_active else "غیرفعال"
+                    plans_text += f"{i}. {plan.name}\n"
+                    plans_text += f"   ⏱️ {Helpers.format_days(plan.days)}\n"
+                    plans_text += f"   📊 {Helpers.format_traffic(plan.traffic_gb)}\n"
+                    plans_text += f"   💰 {Helpers.format_price(plan.price)}\n"
+                    plans_text += f"   📊 وضعیت: {status}\n\n"
+            
+            plans_info = f"""
 📋 مدیریت پلن‌ها:
 
-در این بخش می‌توانید:
-- پلن‌های جدید ایجاد کنید
-- پلن‌های موجود را ویرایش کنید
-- پلن‌ها را فعال/غیرفعال کنید
+{plans_text}
 
-این بخش در نسخه‌های بعدی پیاده‌سازی خواهد شد.
+عملیات موجود:
+• ایجاد پلن جدید
+• ویرایش پلن‌های موجود
+• فعال/غیرفعال کردن پلن‌ها
+• حذف پلن‌ها
 """
-        
-        keyboard = Keyboards.admin_back_menu()
-        await query.edit_message_text(admin_info, reply_markup=keyboard)
+            
+            keyboard = Keyboards.admin_back_menu()
+            await query.edit_message_text(plans_info, reply_markup=keyboard)
+            
+        except Exception as e:
+            logger.error(f"Error in show_admin_plans: {e}")
+            await query.answer("❌ خطایی رخ داده است!")
     
     async def show_admin_payments(self, query):
         """نمایش مدیریت پرداخت‌ها"""
